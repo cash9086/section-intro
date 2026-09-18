@@ -104,9 +104,20 @@ un cookie.
   che restano in pagina. Senza restituirla, la sezione se ne va e lascia l'hero
   inchiodato a metà schermo e sbiancato per sempre.
 
-- **E si azzera il margine del ponte.** Quel `-160vh` serviva a farlo cominciare
-  sotto questa sezione; senza, lo farebbe cominciare sotto l'hero, e la sua
-  fotografia a tutto schermo coprirebbe le lettere mentre salgono nella barra.
+- **E si ritara il margine del ponte a `-100vh`.** Quel `-160vh` serviva a farlo
+  cominciare sotto questa sezione, che non c'è più. A zero nascono due difetti:
+  fra la fotografia dell'hero che si sfila e quella del ponte che si accende
+  restano cento schermate di bianco, e siccome le due sono la **stessa**
+  fotografia sembra che si ripeta; in più il ponte spende 160 schermate a non
+  fare niente. A `-100vh` il testimone passa nell'istante esatto in cui l'hero
+  comincia a sfilarsi.
+
+- **E la fotografia del ponte si vela finché le lettere volano.** Cominciando
+  sopra l'hero, a tutto schermo, si mangerebbe l'ultimo tratto della loro
+  salita. Il marchio però dice già da solo quando sta lavorando: mette
+  `is-ghost` sul logo della barra, perché in quel momento il logo vero deve
+  stare nascosto. Si legge quella classe — niente misure, nessun accordo nuovo
+  da tenere in piedi fra i due codici.
 
 - **Si collassa, non si nasconde.** Con `display:none` il rettangolo della
   sezione diventa tutto a zero, e il marchio dell'hero — che guarda proprio

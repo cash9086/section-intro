@@ -154,6 +154,7 @@
   var fotoPonte = document.querySelector('.cape-bridge-photo');
   var hs        = document.querySelector('.cape-hs-wrap');
   var ponte     = document.querySelector('.cape-bridge');
+  var logo      = document.querySelector('.header-cape .cape-logo');
 
   var firmaBox = track.querySelector('.intro-sign');
   var stick = track.querySelector('.intro-stick');
@@ -431,12 +432,20 @@
     track.style.marginTop = '0px';
     track.style.overflow  = 'hidden';
 
-    /* E con lei va tolto anche il margine negativo del ponte. Quel -160vh
-       serviva a farlo cominciare sotto la intro; senza la intro lo farebbe
-       cominciare sotto l'HERO, e la sua fotografia a tutto schermo coprirebbe
-       le lettere mentre stanno ancora salendo nella barra. A zero il ponte si
-       appoggia dove deve: subito dopo l'hero. */
-    if(ponte) ponte.style.marginTop = '0px';
+    /* E il margine del ponte va ritarato. Quel -160vh serviva a farlo
+       cominciare sotto la intro, che non c'e' piu'.
+
+       A ZERO il ponte si appoggia dopo l'hero — e li' nascono i due difetti
+       che si vedono nel video: fra la fotografia dell'hero che si sfila e
+       quella del ponte che si accende restano cento schermate di bianco, e
+       siccome le due sono la STESSA fotografia sembra che si ripeta. In piu'
+       il ponte, lungo 260 schermate, ne spende 160 a non fare niente.
+
+       A -100vh il ponte comincia nell'istante esatto in cui l'hero comincia a
+       sfilarsi: la sua fotografia raccoglie il testimone dove l'altra lo
+       lascia, senza bianco in mezzo e senza doppioni. E le 100 schermate di
+       sovrapposizione sono 100 schermate di scroll in meno. */
+    if(ponte) ponte.style.marginTop = '-100vh';
 
     var dopo  = hs.getBoundingClientRect().top;
     var delta = dopo - prima;
@@ -451,12 +460,25 @@
     }
   }
 
-  /* Il controllo costa un rettangolo per scrollata, e smette del tutto dopo
-     la prima volta. Non usa il ciclo della sezione apposta: quello si spegne
-     quando la sezione esce dallo schermo, cioe' molto prima di qui. */
+  /* Il ponte adesso comincia sopra l'hero, e la sua fotografia e' a tutto
+     schermo: senza un velo si mangerebbe l'ultimo tratto della salita delle
+     lettere. Il marchio pero' dice gia' da solo quando sta lavorando — mette
+     `is-ghost` sul logo della barra mentre le lettere sono in volo, perche'
+     in quel momento il logo vero deve stare nascosto. Si legge quello: una
+     classe, niente misure, e nessun accordo nuovo da tenere in piedi fra i
+     due codici. */
+  function velaPonte(){
+    if(!fotoPonte || !logo) return;
+    fotoPonte.style.visibility = logo.classList.contains('is-ghost') ? 'hidden' : '';
+  }
+
+  /* Il controllo costa un rettangolo per scrollata, e quello della sparizione
+     smette del tutto dopo la prima volta. Non usa il ciclo della sezione
+     apposta: quello si spegne quando la sezione esce dallo schermo, cioe'
+     molto prima di qui. */
   if(hs){
     addEventListener('scroll', function(){
-      if(sparita) return;
+      if(sparita){ velaPonte(); return; }
       if(hs.getBoundingClientRect().top > -SPARISCI_A / 100 * window.innerHeight) return;
       svanisci();
     }, { passive:true });
