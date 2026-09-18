@@ -97,6 +97,23 @@
      mentre lui lo tiene fermo li fa litigare — per questo sotto si aspetta
      che abbia mollato la presa, invece di tenersi un margine a caso. */
   var SPARISCI_A = 0;
+
+  /* Sparita la sezione, il ponte va ritarato. Due numeri, legati fra loro.
+
+     SOVRAP: di quanto il ponte sale sopra l'hero. L'hero, nelle sue ultime
+     100 schermate, si sfila — e sotto non c'e' piu' niente: il ponte deve
+     salire almeno di tanto, o si vede il bianco.
+
+     FERMO: quante schermate la fotografia resta piena prima di ritirarsi.
+     Il ritiro occupa sempre l'ultimo schermo prima dell'orizzontale, quindi
+     l'altezza del ponte viene FERMO + 100.
+
+     FERMO non puo' scendere sotto SOVRAP, ed e' un vincolo fisico, non una
+     scelta: il ritiro non puo' cominciare finche' l'hero non e' finito di
+     uscire, o da sotto la fotografia che si stringe si rivede la sua coda.
+     Cento schermate di fotografia piena sono il pavimento. */
+  var PONTE_SOVRAP = 100;
+  var PONTE_FERMO  = 100;
   var BRUCIATURA = true;  /* false: il pannello arriva e basta, senza
                              bruciatura. E' la via di fuga se non convince. */
 
@@ -441,11 +458,14 @@
        siccome le due sono la STESSA fotografia sembra che si ripeta. In piu'
        il ponte, lungo 260 schermate, ne spende 160 a non fare niente.
 
-       A -100vh il ponte comincia nell'istante esatto in cui l'hero comincia a
-       sfilarsi: la sua fotografia raccoglie il testimone dove l'altra lo
-       lascia, senza bianco in mezzo e senza doppioni. E le 100 schermate di
-       sovrapposizione sono 100 schermate di scroll in meno. */
-    if(ponte) ponte.style.marginTop = '-100vh';
+       Alzandolo sopra l'hero la sua fotografia raccoglie il testimone dove
+       l'altra lo lascia, senza bianco in mezzo e senza doppioni. E anche
+       l'altezza va ritarata: quella di partenza, 260 schermate, ne lasciava
+       160 di fotografia ferma. */
+    if(ponte){
+      ponte.style.marginTop = (-PONTE_SOVRAP) + 'vh';
+      ponte.style.height    = (PONTE_FERMO + 100) + 'vh';
+    }
 
     var dopo  = hs.getBoundingClientRect().top;
     var delta = dopo - prima;
@@ -483,6 +503,41 @@
       svanisci();
     }, { passive:true });
   }
+
+  /* Diagnostica. In console: capeIntro(). Dice a che punto e' la tenuta e a
+     che punto e' la coreografia, cosi' quando qualcosa non torna si guardano
+     i numeri veri invece di dedurli. */
+  window.capeIntro = function(){
+    var vh = window.innerHeight, y = window.scrollY;
+    var top = track.offsetTop, b = track.offsetHeight - vh;
+    var sc = scOra(), f = 'prima';
+    if(sc >= 0) for(var k in TAB) if(sc >= TAB[k].da) f = k;
+    return {
+      vh: vh,
+      y: Math.round(y),
+      sezione: { top:Math.round(top), alta:Math.round(track.offsetHeight),
+                 binario:Math.round(b), inScreen:+(b/vh).toFixed(2) },
+      tenuta: {
+        riserva:   Math.round(RISERVA),
+        naturale:  Math.round(top - vh),
+        corniceOk: !!pieno,
+        pieno:     pieno ? Math.round(pieno) : null,
+        rilasciata: yRil !== null,
+        yRil:      yRil === null ? null : Math.round(yRil),
+        spesa:     Math.round(speso),
+        heroSpinto: Math.round(hyFermo),
+        heroOra:   hero ? (hero.style.transform || '(niente)') : '(manca .c-sticky)'
+      },
+      coreografia: {
+        aperta:     apertaOra,
+        ipApertura: ipApertura === null ? null : +ipApertura.toFixed(3),
+        sc:         Math.round(sc),
+        fase:       f,
+        serve:      TOT + F_SVILUPPO
+      },
+      sparita: sparita
+    };
+  };
 
   var visible = false, running = false;
 

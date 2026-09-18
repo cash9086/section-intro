@@ -74,6 +74,8 @@ un cookie.
 | `OVERLAP` | `0.4` | quanto una parola parte prima che finisca la precedente |
 | `USCITA_LUCE` | `5` | la luce da cui la foto rientra in uscita |
 | `SPARISCI_A` | `0` | schermate dentro l'orizzontale prima di sparire |
+| `PONTE_SOVRAP` | `100` | di quanto il ponte sale sopra l'hero, sparita la sezione |
+| `PONTE_FERMO` | `100` | schermate di fotografia piena prima che si ritiri |
 | `BRUCIATURA` | `true` | `false` → il pannello arriva e basta, senza bruciatura |
 
 ---
@@ -125,6 +127,26 @@ un cookie.
   «sono coperto», per sempre: risalendo in cima le lettere non uscirebbero più
   dal logo. A zero di altezza la sezione resta dov'è, fra l'hero e il ponte, e
   il suo bordo alto continua a rispondere la verità.
+
+---
+
+## Il pavimento delle cento schermate
+
+`PONTE_FERMO` non può scendere sotto `PONTE_SOVRAP`, e non è una scelta di
+gusto: è geometria.
+
+L'hero è alto 300vh con uno sticky da 100, quindi nelle sue ultime cento
+schermate la fotografia si sfila e sotto non c'è più niente. Il ponte deve
+salirci sopra almeno di tanto (`PONTE_SOVRAP`), o si vede il bianco — e siccome
+le due fotografie sono la stessa immagine, un bianco in mezzo si legge come un
+doppione.
+
+Ma il ritiro non può cominciare finché l'hero non ha finito di uscire: da sotto
+la fotografia che si stringe si rivedrebbe la sua coda. Quindi la fotografia
+resta piena per tutta la sovrapposizione, e **cento schermate ferme sono il
+minimo ottenibile** finché l'hero è alto 300vh.
+
+Per scendere sotto bisogna accorciare l'hero, non questo file.
 
 ---
 
