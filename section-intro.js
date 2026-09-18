@@ -594,6 +594,25 @@
   if(hs){
     var guardaAtteso = false;
 
+    /* Le velature servono SOLO mentre il ponte e' a tiro. Dentro
+       l'orizzontale non c'e' niente da velare, e ogni lavoro fatto li' e'
+       lavoro tolto al rig — che di suo, a ogni fotogramma, sposta una track
+       larga quattro schermi.
+
+       Con questa guardia, da dentro l'orizzontale questo file fa esattamente
+       una cosa per evento di scroll: leggere un booleano. Zero misure, zero
+       scritture, nemmeno un requestAnimationFrame. */
+    var ponteVicino = true;
+
+    if(window.IntersectionObserver && ponte){
+      new IntersectionObserver(function(es){
+        ponteVicino = es[0].isIntersecting;
+        /* uscendo dal raggio si fa un ultimo giro, o l'hero resterebbe
+           spento con la fotografia del ponte gia' sparita */
+        if(!ponteVicino && sparita) velaOra();
+      }, { rootMargin:'100% 0px' }).observe(ponte);
+    }
+
     /* Il momento in cui la sezione sparisce e' anche quello in cui il muro
        d'ingresso del rig ferma Lenis e lo rimette in riga. Due codici che
        scrivono sullo scroll nello stesso istante si catapultano a vicenda.
@@ -621,11 +640,26 @@
 
     /* Un giro per fotogramma anche qui. Gli eventi di scroll arrivano piu'
        spesso dei fotogrammi, e ognuno costava una misura del layout. */
-    addEventListener('scroll', function(){
+    function suScroll(){
+      if(sparita && !ponteVicino) return;
       if(guardaAtteso) return;
       guardaAtteso = true;
       requestAnimationFrame(guarda);
-    }, { passive:true });
+    }
+
+    addEventListener('scroll', suScroll, { passive:true });
+
+    /* Interruttore per la diagnosi. In console: capeIntroStop().
+       Stacca tutto quello che questo file ascolta e rimette gli elementi
+       com'erano. Se dopo averlo chiamato il lag c'e' ancora, la causa non e'
+       qui dentro — ed e' l'unico modo di saperlo senza tirare a indovinare. */
+    window.capeIntroStop = function(){
+      removeEventListener('scroll', suScroll);
+      visible = false;
+      if(hero)      hero.style.visibility = '';
+      if(fotoPonte) fotoPonte.style.visibility = '';
+      return 'section-intro staccato: ciclo fermo, listener rimossi, velature tolte.';
+    };
   }
 
   /* Diagnostica. In console: capeIntro(). Dice a che punto e' la tenuta e a

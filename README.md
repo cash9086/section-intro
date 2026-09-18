@@ -168,6 +168,26 @@ spenga. Per un tratto si sovrappongono, ma sono la stessa immagine e non si
 vede niente. Nella sovrapposizione non c'è niente da vedere; nel buco c'è il
 bianco.
 
+### Dentro l'orizzontale questo file non fa niente
+
+Le velature servono solo mentre il ponte è a tiro. Un `IntersectionObserver` su
+`.cape-bridge` tiene un booleano, e dentro l'orizzontale il gestore di scroll
+fa **esattamente una cosa**: leggerlo. Zero misure, zero scritture, nemmeno un
+`requestAnimationFrame`.
+
+Non è zelo: il rig, a ogni fotogramma, sposta una track larga quattro schermi.
+Ogni lavoro fatto lì è lavoro tolto a lui.
+
+### L'interruttore
+
+```js
+capeIntroStop()
+```
+
+Stacca tutto quello che questo file ascolta e rimette gli elementi com'erano.
+Serve a una domanda sola, e vale più di qualsiasi ragionamento: **se dopo averlo
+chiamato il problema c'è ancora, la causa non è qui dentro.**
+
 ### Il layout si misura solo quando serve
 
 La velatura dell'hero sembra dover sapere dov'è il ponte, e quindi misurarlo.
