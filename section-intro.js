@@ -108,12 +108,14 @@
      Il ritiro occupa sempre l'ultimo schermo prima dell'orizzontale, quindi
      l'altezza del ponte viene FERMO + 100.
 
-     FERMO non puo' scendere sotto SOVRAP, ed e' un vincolo fisico, non una
-     scelta: il ritiro non puo' cominciare finche' l'hero non e' finito di
-     uscire, o da sotto la fotografia che si stringe si rivede la sua coda.
-     Cento schermate di fotografia piena sono il pavimento. */
+     FERMO sembrava non poter scendere sotto SOVRAP — il ritiro non puo'
+     cominciare finche' l'hero non ha finito di sfilarsi, o da sotto la
+     fotografia che si stringe se ne rivede la coda. Ma la coda si puo'
+     spegnere: sotto la fotografia del ponte l'hero non serve a niente, e
+     l'uno e' la copia dell'altra. Spento lui, il pavimento non c'e' piu' e
+     FERMO diventa una pausa, non un obbligo. */
   var PONTE_SOVRAP = 100;
-  var PONTE_FERMO  = 100;
+  var PONTE_FERMO  = 25;
   var BRUCIATURA = true;  /* false: il pannello arriva e basta, senza
                              bruciatura. E' la via di fuga se non convince. */
 
@@ -427,7 +429,7 @@
     /* Quello che questa sezione aveva scritto ALTROVE va restituito, o resta
        appeso per sempre: l'hero tenuto fermo a meta' schermo, la sua
        fotografia bruciata, quella del ponte pure. */
-    if(hero)      hero.style.transform = '';
+    if(hero){ hero.style.transform = ''; hero.style.visibility = ''; }
     if(fondale)   fondale.style.filter = '';
     if(fotoPonte) fotoPonte.style.filter = '';
 
@@ -488,8 +490,28 @@
      classe, niente misure, e nessun accordo nuovo da tenere in piedi fra i
      due codici. */
   function velaPonte(){
-    if(!fotoPonte || !logo) return;
-    fotoPonte.style.visibility = logo.classList.contains('is-ghost') ? 'hidden' : '';
+    var vola = !!(logo && logo.classList.contains('is-ghost'));
+
+    /* Finche' le lettere volano, la fotografia del ponte sta nascosta. */
+    if(fotoPonte) fotoPonte.style.visibility = vola ? 'hidden' : '';
+
+    /* E quando invece e' lei a coprire, si spegne l'hero: sotto non serve a
+       niente — e' la stessa identica fotografia — e lasciandolo acceso, da
+       sotto quella che si stringe se ne rivedrebbe la coda mentre si sfila.
+       E' per questo che il ritiro puo' cominciare subito invece di aspettare
+       che l'hero sia uscito del tutto.
+
+       visibility e non display: il rettangolo resta, e il marchio della barra
+       continua a misurarlo come ha sempre fatto.
+
+       Le due condizioni sono legate apposta: se le lettere volano ancora, la
+       fotografia del ponte e' velata e l'hero DEVE restare acceso, o non
+       resterebbe niente da guardare. */
+    if(hero && ponte){
+      var r = ponte.getBoundingClientRect();
+      var copre = !vola && r.top <= 0 && r.bottom > 0;
+      hero.style.visibility = copre ? 'hidden' : '';
+    }
   }
 
   /* Il controllo costa un rettangolo per scrollata, e quello della sparizione

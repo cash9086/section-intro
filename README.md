@@ -75,7 +75,7 @@ un cookie.
 | `USCITA_LUCE` | `5` | la luce da cui la foto rientra in uscita |
 | `SPARISCI_A` | `0` | schermate dentro l'orizzontale prima di sparire |
 | `PONTE_SOVRAP` | `100` | di quanto il ponte sale sopra l'hero, sparita la sezione |
-| `PONTE_FERMO` | `100` | schermate di fotografia piena prima che si ritiri |
+| `PONTE_FERMO` | `25` | schermate di fotografia piena prima che si ritiri |
 | `BRUCIATURA` | `true` | `false` → il pannello arriva e basta, senza bruciatura |
 
 ---
@@ -130,23 +130,27 @@ un cookie.
 
 ---
 
-## Il pavimento delle cento schermate
+## Il pavimento che non c'era
 
-`PONTE_FERMO` non può scendere sotto `PONTE_SOVRAP`, e non è una scelta di
-gusto: è geometria.
+Sembrava che `PONTE_FERMO` non potesse scendere sotto `PONTE_SOVRAP`. Il
+ragionamento: l'hero è alto 300vh con uno sticky da 100, quindi nelle sue ultime
+cento schermate la fotografia si sfila; il ponte deve salirci sopra almeno di
+tanto o si vede il bianco; ma il ritiro non può cominciare prima che l'hero
+abbia finito di uscire, o da sotto la fotografia che si stringe se ne rivede la
+coda. Da lì: cento schermate ferme, obbligatorie.
 
-L'hero è alto 300vh con uno sticky da 100, quindi nelle sue ultime cento
-schermate la fotografia si sfila e sotto non c'è più niente. Il ponte deve
-salirci sopra almeno di tanto (`PONTE_SOVRAP`), o si vede il bianco — e siccome
-le due fotografie sono la stessa immagine, un bianco in mezzo si legge come un
-doppione.
+L'errore era dare per scontato che l'hero dovesse restare acceso. **Sotto la
+fotografia del ponte non serve a niente** — è la stessa identica immagine — e
+spento lui non c'è più nessuna coda da nascondere. Il ritiro può cominciare
+subito, e `PONTE_FERMO` torna a essere quello che dice di essere: una pausa,
+non un obbligo.
 
-Ma il ritiro non può cominciare finché l'hero non ha finito di uscire: da sotto
-la fotografia che si stringe si rivedrebbe la sua coda. Quindi la fotografia
-resta piena per tutta la sovrapposizione, e **cento schermate ferme sono il
-minimo ottenibile** finché l'hero è alto 300vh.
+Si spegne con `visibility`, non con `display`: il rettangolo resta, e il marchio
+della barra continua a misurarlo come ha sempre fatto.
 
-Per scendere sotto bisogna accorciare l'hero, non questo file.
+Le due velature sono legate: se le lettere stanno ancora salendo, la fotografia
+del ponte è velata e l'hero **deve** restare acceso, o non resterebbe niente da
+guardare.
 
 ---
 
