@@ -56,8 +56,8 @@ contate da quando il pannello ha finito di arrivare:
 sotto la fotografia del ponte rientra da `brightness(5)` — la stessa luce
 dell'entrata, `USCITA_LUCE` è messo uguale a `BRUCIA`.
 
-**La sparizione.** Arrivati `SPARISCI_A` schermate dentro l'orizzontale, la
-sezione esce dal documento. Risalendo si passa dal ponte direttamente all'hero;
+**La sparizione.** Appena il rig orizzontale tocca il bordo alto, la sezione
+collassa a zero. Risalendo si passa dal ponte direttamente all'hero;
 riscendendo non c'è più. Torna solo con un refresh: è uno stato in memoria, non
 un cookie.
 
@@ -73,7 +73,7 @@ un cookie.
 | `PALE` | `0` | le parole nascono dal nulla; alzalo per un contorno spento |
 | `OVERLAP` | `0.4` | quanto una parola parte prima che finisca la precedente |
 | `USCITA_LUCE` | `5` | la luce da cui la foto rientra in uscita |
-| `SPARISCI_A` | `60` | schermate dentro l'orizzontale prima di sparire |
+| `SPARISCI_A` | `0` | schermate dentro l'orizzontale prima di sparire |
 | `BRUCIATURA` | `true` | `false` → il pannello arriva e basta, senza bruciatura |
 
 ---
@@ -108,6 +108,13 @@ un cookie.
   sotto questa sezione; senza, lo farebbe cominciare sotto l'hero, e la sua
   fotografia a tutto schermo coprirebbe le lettere mentre salgono nella barra.
 
+- **Si collassa, non si nasconde.** Con `display:none` il rettangolo della
+  sezione diventa tutto a zero, e il marchio dell'hero — che guarda proprio
+  questa sezione per sapere se è coperto — leggerebbe un bordo alto a 0, cioè
+  «sono coperto», per sempre: risalendo in cima le lettere non uscirebbero più
+  dal logo. A zero di altezza la sezione resta dov'è, fra l'hero e il ponte, e
+  il suo bordo alto continua a rispondere la verità.
+
 ---
 
 ## La sparizione, e perché non si vede
@@ -124,8 +131,10 @@ La correzione passa da **Lenis**, se c'è. Lenis tiene un suo scroll interno:
 scrivendo solo su quello del browser i due si sdoppiano, e la pagina tornerebbe
 indietro da sola al fotogramma dopo.
 
-`SPARISCI_A` non è a zero apposta: lì si pesterebbe i piedi al muro d'ingresso
-del rig, che proprio in quel punto ferma lo scroll per qualche decimo di secondo.
+Il muro d'ingresso del rig ferma Lenis per qualche decimo di secondo proprio nel
+punto in cui la sezione sparisce. Scrivere sullo scroll mentre lui lo tiene fermo
+vuol dire contendersi il volante: si aspetta che molli — `lenis.isStopped` — e il
+colpo di rotella successivo riporta lì.
 
 ---
 
@@ -141,13 +150,8 @@ Nell'head della pagina, nel blocco `/* sezione intro */`:
 Se `--binario` è troppo corto la coreografia non ci sta, e **lo script te lo
 dice in console** con il numero esatto di vh che mancano.
 
-Nell'Embed `Code Embed 11` (il marchio dell'hero), una sezione collassata deve
-contare come assente — o risalendo in cima le lettere non tornano più:
-
-```js
-var cr     = COPRE ? COPRE.getBoundingClientRect() : null;
-var libero = !cr || (!cr.width && !cr.height) || cr.top > barY;
-```
+Nell'Embed `Code Embed 11` (il marchio dell'hero) **non serve toccare niente**:
+è per questo che la sezione si collassa invece di nascondersi.
 
 ---
 

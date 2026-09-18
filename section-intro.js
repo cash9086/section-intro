@@ -91,10 +91,12 @@
      c'e' piu'. Torna solo con un refresh — e' uno stato in memoria, non un
      cookie: la pagina ricaricata e' una pagina nuova.
 
-     Quante schermate dentro l'orizzontale aspettare. NON zero: a zero si
-     pesterebbe i piedi al muro d'ingresso del rig, che proprio li' ferma lo
-     scroll per qualche decimo di secondo. Si aspetta che abbia finito. */
-  var SPARISCI_A = 60;
+     Quante schermate dentro l'orizzontale aspettare: zero, cioe' appena il
+     rig tocca il bordo alto. Il muro d'ingresso del rig ferma lo scroll
+     proprio li' per qualche decimo di secondo, e scrivere sullo scroll
+     mentre lui lo tiene fermo li fa litigare — per questo sotto si aspetta
+     che abbia mollato la presa, invece di tenersi un margine a caso. */
+  var SPARISCI_A = 0;
   var BRUCIATURA = true;  /* false: il pannello arriva e basta, senza
                              bruciatura. E' la via di fuga se non convince. */
 
@@ -395,6 +397,13 @@
 
   function svanisci(){
     if(sparita || !hs || !track.offsetHeight) return;
+
+    /* Il muro d'ingresso del rig ferma Lenis per qualche decimo di secondo
+       proprio in questo punto. Scrivere sullo scroll adesso vorrebbe dire
+       contendersi il volante con lui: si aspetta che molli, e il prossimo
+       colpo di rotella ci riporta qui. */
+    if(window.lenis && window.lenis.isStopped) return;
+
     sparita = true;
 
     /* Quello che questa sezione aveva scritto ALTROVE va restituito, o resta
@@ -406,7 +415,21 @@
 
     var prima = hs.getBoundingClientRect().top;
 
-    track.style.display = 'none';
+    /* Si COLLASSA, non si nasconde.
+
+       Con display:none il rettangolo della sezione diventa tutto a zero, e
+       il marchio dell'hero — che guarda proprio questa sezione per sapere se
+       e' coperto — leggerebbe un bordo alto a 0, cioe' "sono coperto",
+       per sempre. Risultato: risalendo in cima le lettere non uscirebbero
+       piu' dal logo.
+
+       A zero di altezza la sezione resta dov'e', fra l'hero e il ponte: il
+       suo bordo alto continua a rispondere la verita' — sotto di te quando
+       sei sull'hero, sopra di te quando sei piu' giu' — e il marchio
+       funziona senza sapere che qui e' successo qualcosa. */
+    track.style.height    = '0px';
+    track.style.marginTop = '0px';
+    track.style.overflow  = 'hidden';
 
     /* E con lei va tolto anche il margine negativo del ponte. Quel -160vh
        serviva a farlo cominciare sotto la intro; senza la intro lo farebbe
