@@ -116,6 +116,11 @@
      FERMO diventa una pausa, non un obbligo. */
   var PONTE_SOVRAP = 100;
   var PONTE_FERMO  = 25;
+
+  /* Di quanto l'hero si riaccende in anticipo rispetto allo spegnersi della
+     fotografia del ponte. Serve a non lasciare mai un fotogramma con nessuno
+     dei due acceso — vedi velaOra(). */
+  var VELO_MARGINE = 15;
   var BRUCIATURA = true;  /* false: il pannello arriva e basta, senza
                              bruciatura. E' la via di fuga se non convince. */
 
@@ -480,6 +485,8 @@
         window.scrollTo(0, meta);
       }
     }
+
+    velaOra();
   }
 
   /* Il ponte adesso comincia sopra l'hero, e la sua fotografia e' a tutto
@@ -489,29 +496,59 @@
      in quel momento il logo vero deve stare nascosto. Si legge quello: una
      classe, niente misure, e nessun accordo nuovo da tenere in piedi fra i
      due codici. */
-  function velaPonte(){
+  var veloFoto = null, veloHero = null, veloAtteso = false;
+
+  function velaOra(){
+    veloAtteso = false;
+
     var vola = !!(logo && logo.classList.contains('is-ghost'));
 
     /* Finche' le lettere volano, la fotografia del ponte sta nascosta. */
-    if(fotoPonte) fotoPonte.style.visibility = vola ? 'hidden' : '';
+    if(fotoPonte){
+      var f = vola ? 'hidden' : '';
+      if(f !== veloFoto){ veloFoto = f; fotoPonte.style.visibility = f; }
+    }
 
     /* E quando invece e' lei a coprire, si spegne l'hero: sotto non serve a
        niente — e' la stessa identica fotografia — e lasciandolo acceso, da
        sotto quella che si stringe se ne rivedrebbe la coda mentre si sfila.
-       E' per questo che il ritiro puo' cominciare subito invece di aspettare
-       che l'hero sia uscito del tutto.
+
+       Il margine non e' prudenza: al confine ci sono TRE codici che decidono
+       nello stesso fotogramma — il ponte accende e spegne la sua fotografia,
+       il marchio mette e toglie is-ghost, questo spegne e riaccende l'hero —
+       e l'ordine fra loro non e' garantito. Senza margine capita il
+       fotogramma in cui la fotografia e' gia' spenta e l'hero non e' ancora
+       riacceso: e' quello il lampo bianco che si vedeva risalendo.
+
+       Con il margine, l'hero si riaccende un pezzo PRIMA che la fotografia si
+       spenga. Per un tratto si sovrappongono — ma sono la stessa immagine,
+       quindi non si vede niente. Meglio una sovrapposizione che un buco:
+       nella prima non c'e' niente da vedere, nel secondo c'e' il bianco.
 
        visibility e non display: il rettangolo resta, e il marchio della barra
-       continua a misurarlo come ha sempre fatto.
-
-       Le due condizioni sono legate apposta: se le lettere volano ancora, la
-       fotografia del ponte e' velata e l'hero DEVE restare acceso, o non
-       resterebbe niente da guardare. */
+       continua a misurarlo come ha sempre fatto. */
     if(hero && ponte){
+      var m = VELO_MARGINE / 100 * window.innerHeight;
       var r = ponte.getBoundingClientRect();
-      var copre = !vola && r.top <= 0 && r.bottom > 0;
-      hero.style.visibility = copre ? 'hidden' : '';
+      var accesa = !!(fotoPonte && fotoPonte.classList.contains('is-on'));
+      var copre  = !vola && accesa && r.top <= -m && r.bottom > m;
+      var h = copre ? 'hidden' : '';
+      if(h !== veloHero){ veloHero = h; hero.style.visibility = h; }
     }
+  }
+
+  /* Un giro per fotogramma, e si scrive solo quando il valore cambia.
+
+     Prima si scriveva a ogni evento di scroll — che con Lenis vuol dire a
+     ogni fotogramma — e non era il conto a costare: era la scrittura.
+     Toccare visibility su .c-sticky invalida lo stile di tutto quello che ha
+     dentro (fotografia, cornice, silhouette, le tredici lettere del marchio),
+     e rifarlo sessanta volte al secondo per riscrivere lo stesso identico
+     valore e' esattamente il genere di lavoro che fa singhiozzare lo scroll. */
+  function velaPonte(){
+    if(veloAtteso) return;
+    veloAtteso = true;
+    requestAnimationFrame(velaOra);
   }
 
   /* Il controllo costa un rettangolo per scrollata, e quello della sparizione
@@ -519,10 +556,21 @@
      apposta: quello si spegne quando la sezione esce dallo schermo, cioe'
      molto prima di qui. */
   if(hs){
-    addEventListener('scroll', function(){
-      if(sparita){ velaPonte(); return; }
+    var guardaAtteso = false;
+
+    function guarda(){
+      guardaAtteso = false;
+      if(sparita){ velaOra(); return; }
       if(hs.getBoundingClientRect().top > -SPARISCI_A / 100 * window.innerHeight) return;
       svanisci();
+    }
+
+    /* Un giro per fotogramma anche qui. Gli eventi di scroll arrivano piu'
+       spesso dei fotogrammi, e ognuno costava una misura del layout. */
+    addEventListener('scroll', function(){
+      if(guardaAtteso) return;
+      guardaAtteso = true;
+      requestAnimationFrame(guarda);
     }, { passive:true });
   }
 

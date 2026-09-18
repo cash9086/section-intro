@@ -76,6 +76,7 @@ un cookie.
 | `SPARISCI_A` | `0` | schermate dentro l'orizzontale prima di sparire |
 | `PONTE_SOVRAP` | `100` | di quanto il ponte sale sopra l'hero, sparita la sezione |
 | `PONTE_FERMO` | `25` | schermate di fotografia piena prima che si ritiri |
+| `VELO_MARGINE` | `15` | di quanto l'hero si riaccende in anticipo sul ponte |
 | `BRUCIATURA` | `true` | `false` → il pannello arriva e basta, senza bruciatura |
 
 ---
@@ -151,6 +152,28 @@ della barra continua a misurarlo come ha sempre fatto.
 Le due velature sono legate: se le lettere stanno ancora salendo, la fotografia
 del ponte è velata e l'hero **deve** restare acceso, o non resterebbe niente da
 guardare.
+
+### Meglio una sovrapposizione che un buco
+
+Al confine ci sono **tre codici che decidono nello stesso fotogramma** — il
+ponte accende e spegne la sua fotografia, il marchio mette e toglie `is-ghost`,
+questo file spegne e riaccende l'hero — e l'ordine fra loro non è garantito.
+Senza precauzioni capita il fotogramma in cui la fotografia è già spenta e
+l'hero non è ancora riacceso: è il lampo bianco che si vedeva risalendo.
+
+`VELO_MARGINE` fa riaccendere l'hero un pezzo **prima** che la fotografia si
+spenga. Per un tratto si sovrappongono, ma sono la stessa immagine e non si
+vede niente. Nella sovrapposizione non c'è niente da vedere; nel buco c'è il
+bianco.
+
+### E si scrive solo quando cambia
+
+Le velature girano **una volta per fotogramma** e scrivono solo se il valore è
+diverso da quello di prima. Non è il conto a costare: è la scrittura. Toccare
+`visibility` su `.c-sticky` invalida lo stile di tutto quello che ha dentro —
+fotografia, cornice, silhouette, le tredici lettere del marchio — e rifarlo
+sessanta volte al secondo per riscrivere lo stesso identico valore è
+esattamente il genere di lavoro che fa singhiozzare lo scroll.
 
 ---
 
