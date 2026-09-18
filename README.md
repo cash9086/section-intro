@@ -77,6 +77,8 @@ un cookie.
 | `PONTE_SOVRAP` | `100` | di quanto il ponte sale sopra l'hero, sparita la sezione |
 | `PONTE_FERMO` | `25` | schermate di fotografia piena prima che si ritiri |
 | `VELO_MARGINE` | `15` | di quanto l'hero si riaccende in anticipo sul ponte |
+| `QUIETE` | `200` | ms di scroll fermo prima di far sparire la sezione |
+| `SICURO` | `150` | schermate dentro il rig oltre cui non si aspetta più |
 | `BRUCIATURA` | `true` | `false` → il pannello arriva e basta, senza bruciatura |
 
 ---
@@ -166,6 +168,18 @@ spenga. Per un tratto si sovrappongono, ma sono la stessa immagine e non si
 vede niente. Nella sovrapposizione non c'è niente da vedere; nel buco c'è il
 bianco.
 
+### Il layout si misura solo quando serve
+
+La velatura dell'hero sembra dover sapere dov'è il ponte, e quindi misurarlo.
+Ma la fotografia del ponte dice già da sola quando è in scena — `is-on` — e se
+non è accesa non c'è niente da coprire: lì il rettangolo **non si legge**.
+
+Non è un'ottimizzazione di principio. Dentro l'orizzontale il rig riscrive la
+sua trasformata a ogni fotogramma, e un `getBoundingClientRect()` subito dopo
+obbliga il browser a rifare i conti prima di rispondere — sessanta volte al
+secondo, per una risposta che lì non serve a niente. Era quello il lag che si
+sentiva **solo** in quella sezione.
+
 ### E si scrive solo quando cambia
 
 Le velature girano **una volta per fotogramma** e scrivono solo se il valore è
@@ -192,9 +206,20 @@ scrivendo solo su quello del browser i due si sdoppiano, e la pagina tornerebbe
 indietro da sola al fotogramma dopo.
 
 Il muro d'ingresso del rig ferma Lenis per qualche decimo di secondo proprio nel
-punto in cui la sezione sparisce. Scrivere sullo scroll mentre lui lo tiene fermo
-vuol dire contendersi il volante: si aspetta che molli — `lenis.isStopped` — e il
-colpo di rotella successivo riporta lì.
+punto in cui la sezione sparisce. Due codici che scrivono sullo scroll nello
+stesso istante si catapultano a vicenda — e lo si vede come un salto in avanti
+di due sezioni.
+
+Tre difese, in ordine di costo:
+
+1. **Si aspetta che lo scroll si posi** (`QUIETE` ms senza un evento): è il modo
+   più semplice per sapere che nessun altro sta guidando. Chi scrolla senza mai
+   fermarsi non aspetterebbe mai, e per quello c'è la seconda porta — `SICURO`
+   schermate dentro il rig il muro è comunque speso da un pezzo.
+2. **Non si scrive mentre Lenis è fermo** (`lenis.isStopped`).
+3. **Ci si ricontrolla.** Un fotogramma dopo la correzione si guarda dov'è finito
+   davvero il rig e si rimette a posto la differenza. Costa un rettangolo, una
+   volta nella vita della pagina, ed è la rete sotto le altre due.
 
 ---
 

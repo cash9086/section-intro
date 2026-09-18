@@ -121,6 +121,11 @@
      fotografia del ponte. Serve a non lasciare mai un fotogramma con nessuno
      dei due acceso — vedi velaOra(). */
   var VELO_MARGINE = 15;
+
+  /* Quanto lo scroll deve stare fermo prima di far sparire la sezione, e da
+     quante schermate dentro il rig si smette di aspettare. */
+  var QUIETE = 200;
+  var SICURO = 150;
   var BRUCIATURA = true;  /* false: il pannello arriva e basta, senza
                              bruciatura. E' la via di fuga se non convince. */
 
@@ -487,6 +492,23 @@
     }
 
     velaOra();
+
+    /* E si ricontrolla. Se fra la misura e la correzione qualcun altro ha
+       messo mano allo scroll — il muro del rig e' proprio li' — il rig non e'
+       tornato dov'era, e si sente come un salto in avanti di due sezioni. Un
+       fotogramma dopo si guarda dov'e' finito davvero e si rimette a posto la
+       differenza. Costa un rettangolo, una volta nella vita della pagina. */
+    requestAnimationFrame(function(){
+      var ora = hs.getBoundingClientRect().top;
+      var resto = ora - prima;
+      if(Math.abs(resto) < 2) return;
+      var m2 = (window.scrollY || window.pageYOffset) + resto;
+      if(window.lenis && window.lenis.scrollTo){
+        window.lenis.scrollTo(m2, { immediate:true, force:true });
+      } else {
+        window.scrollTo(0, m2);
+      }
+    });
   }
 
   /* Il ponte adesso comincia sopra l'hero, e la sua fotografia e' a tutto
@@ -527,11 +549,25 @@
 
        visibility e non display: il rettangolo resta, e il marchio della barra
        continua a misurarlo come ha sempre fatto. */
-    if(hero && ponte){
-      var m = VELO_MARGINE / 100 * window.innerHeight;
-      var r = ponte.getBoundingClientRect();
+    if(hero){
+      /* La fotografia del ponte dice da sola quando e' in scena: `is-on`.
+         Se non e' accesa non c'e' niente da coprire, e — questa e' la parte
+         che conta — NON si misura il layout.
+
+         Misurarlo costava: dentro l'orizzontale il rig riscrive la sua
+         trasformata a ogni fotogramma, e un getBoundingClientRect() subito
+         dopo obbliga il browser a rifare i conti prima di rispondere.
+         Sessanta volte al secondo, per una risposta che li' non serviva a
+         niente. E' quello il lag che si sentiva solo in quella sezione. */
       var accesa = !!(fotoPonte && fotoPonte.classList.contains('is-on'));
-      var copre  = !vola && accesa && r.top <= -m && r.bottom > m;
+      var copre  = false;
+
+      if(accesa && !vola && ponte){
+        var m = VELO_MARGINE / 100 * window.innerHeight;
+        var r = ponte.getBoundingClientRect();
+        copre = r.top <= -m && r.bottom > m;
+      }
+
       var h = copre ? 'hidden' : '';
       if(h !== veloHero){ veloHero = h; hero.style.visibility = h; }
     }
@@ -558,11 +594,29 @@
   if(hs){
     var guardaAtteso = false;
 
+    /* Il momento in cui la sezione sparisce e' anche quello in cui il muro
+       d'ingresso del rig ferma Lenis e lo rimette in riga. Due codici che
+       scrivono sullo scroll nello stesso istante si catapultano a vicenda.
+
+       Quindi non si sparisce appena la condizione e' vera: si aspetta che lo
+       scroll si POSI — QUIETE ms senza un evento — che e' il modo piu'
+       semplice per sapere che nessun altro sta guidando. Chi scrolla senza
+       mai fermarsi non aspetterebbe mai, e per quello c'e' la seconda porta:
+       SICURO schermate dentro il rig il muro e' comunque speso da un pezzo. */
+    var quieteT = null;
+
     function guarda(){
       guardaAtteso = false;
       if(sparita){ velaOra(); return; }
-      if(hs.getBoundingClientRect().top > -SPARISCI_A / 100 * window.innerHeight) return;
-      svanisci();
+
+      var vh = window.innerHeight;
+      var top = hs.getBoundingClientRect().top;
+      if(top > -SPARISCI_A / 100 * vh) return;
+
+      if(top <= -SICURO / 100 * vh){ svanisci(); return; }
+
+      clearTimeout(quieteT);
+      quieteT = setTimeout(svanisci, QUIETE);
     }
 
     /* Un giro per fotogramma anche qui. Gli eventi di scroll arrivano piu'
