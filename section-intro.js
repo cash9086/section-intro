@@ -880,6 +880,14 @@
     requestAnimationFrame(frame);
   }
 
+  window.capePatti && capePatti.dichiara('section-intro', {
+    scrivo: [['intro-altezza', '.section-intro',
+              'il bordo alto: sparendo si accorcia a zero invece di nascondersi, cosi\' il marchio continua a leggere la verita\' su dove sta']],
+    leggo:  ['window.capeScroll', 'window.lenis',
+             ['is-ghost', '.header-cape .cape-logo', 'mentre le lettere volano, la foto del ponte sta nascosta'],
+             ['is-on', '.cape-bridge-photo', 'se la foto del ponte non e\' accesa non c\'e\' niente da velare']]
+  });
+
   osservaTrack = new IntersectionObserver(function(es){
     visible = es[0].isIntersecting;
     if(visible && !running){ running = true; requestAnimationFrame(frame); }
