@@ -524,14 +524,18 @@
      Si scrive prima sullo scroll del browser — che e' sincrono e garantito,
      quindi il rettangolo disegnato a fine blocco e' gia' quello giusto — e
      solo dopo si allinea Lenis, perche' al suo giro non ci riporti indietro. */
+  var VOLANTE = 'intro-sparizione';
+
   function correggi(meta){
+    if(arbitro){ arbitro.vaA(VOLANTE, meta, { immediate:true }); return; }
     window.scrollTo(0, meta);
     if(window.lenis && window.lenis.scrollTo){
       window.lenis.scrollTo(meta, { immediate:true, force:true });
     }
   }
 
-  var sparita = false;
+  var sparita = false, teniamoNoi = false;
+  var arbitro = window.capeScroll || null;
   var osservaPonte = null, osservaTrack = null;
 
   function svanisci(){
@@ -548,9 +552,15 @@
 
        Se il muro NON sta tenendo, ce lo si tiene da soli per un istante: la
        pagina sta per accorciarsi di quattrocento schermate, e nessuno deve
-       star muovendo lo scroll mentre succede. Quanto a lungo lo dice TIENI. */
-    var teniamoNoi = false;
-    if(window.lenis && window.lenis.stop && !window.lenis.isStopped){
+       star muovendo lo scroll mentre succede. Quanto a lungo lo dice TIENI.
+
+       Il volante si chiede all'arbitro con la precedenza piu' alta: questa
+       non e' una planata a cui si puo' rinunciare, e' una correzione che DEVE
+       passare — anche se in quell'istante il muro del rig sta tenendo. */
+    if(arbitro){
+      arbitro.prendi(VOLANTE, arbitro.CORREZIONE);
+      arbitro.ferma(VOLANTE);
+    } else if(window.lenis && window.lenis.stop && !window.lenis.isStopped){
       try{ window.lenis.stop(); teniamoNoi = true; }catch(e){}
     }
 
@@ -614,6 +624,14 @@
          vedeva. */
       velaOra();
 
+      if(arbitro){
+        /* Mollare riaccende Lenis da solo, chiunque lo avesse fermato. E
+           niente ri-correzione: chi ha il volante dopo di noi ha diritto di
+           stare dove vuole lui — rimettergli lo scroll indietro e' proprio il
+           rimbalzo che si vedeva all'ingresso del rig. */
+        setTimeout(function(){ arbitro.molla(VOLANTE); }, TIENI);
+        return;
+      }
       if(teniamoNoi && window.lenis && window.lenis.start){
         setTimeout(function(){ try{ window.lenis.start(); }catch(e){} }, TIENI);
       }
