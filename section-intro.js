@@ -50,7 +50,6 @@
   var QUOTE     = '.intro-q';
   var SIGN      = '.intro-sign .sign-s';
   var OVERLAP   = 0.4;
-  var PAD       = 1;
   var REVERSE   = [];
   var SOSTA     = 0.80;
   var MAX_HOLD  = 0.80;
@@ -166,26 +165,30 @@
     });
   }
 
-  /* Il tratto si nasconde mettendolo tutto dentro il VUOTO del tratteggio.
-     A riposo l'offset era esattamente lungo quanto il tratteggio, cioe'
-     esattamente sul confine fra pieno e vuoto — e piu' sotto veniva
-     riscritto con due decimali, che a volte arrotondano in giu' e fanno
-     cadere il confine un millesimo DENTRO il pieno.
+  /* ——— come si nasconde un tratto ————————————————————————————————
+     Il tratteggio e' un motivo che si RIPETE: pieno, vuoto, pieno, vuoto.
+     Per tenere un tratto invisibile bisogna che stia tutto dentro UN vuoto,
+     senza sbordare ne' da una parte ne' dall'altra.
 
-     Un millesimo di tratto non si vedrebbe, se non fosse che questi tratti
-     hanno la punta tonda: il browser disegna la punta comunque, e un
-     millesimo di tratto diventa un pallino largo quanto il pennello. Sono
-     i puntini che si vedevano prima che la firma cominciasse a scriversi.
+     Questi tratti hanno la punta tonda, e il browser la disegna anche per un
+     millesimo di pieno: basta sbordare di niente e compare un pallino largo
+     quanto il pennello. Sono i puntini che si vedevano prima che la firma
+     cominciasse a scriversi.
 
-     Si sta due unita' dentro il vuoto, e nessun arrotondamento arriva
-     piu' a toccare il pieno. */
-  var VUOTO = 2;
+     Il vuoto si fa quindi piu' lungo del tratto — di una GUARDIA per parte —
+     e il riposo lo appoggia in mezzo. Cosi' nessun arrotondamento dei due
+     decimali con cui l'offset viene riscritto puo' arrivare a toccare il
+     pieno, ne' davanti ne' dietro. */
+  var GUARDIA = 2;
+
+  function motivo(L){ return L + 2 * GUARDIA; }   /* pieno e vuoto lunghi cosi' */
+  function riposo(L){ return motivo(L) + GUARDIA; }
 
   var lens = strokes.map(function(p, i){
     var L = 0;
     try{ L = p.getTotalLength(); }catch(e){}
-    p.style.strokeDasharray  = L + PAD;
-    p.style.strokeDashoffset = (L + PAD + VUOTO) * (REVERSE.indexOf(i) >= 0 ? -1 : 1);
+    p.style.strokeDasharray  = motivo(L);
+    p.style.strokeDashoffset = riposo(L) * (REVERSE.indexOf(i) >= 0 ? -1 : 1);
     return L;
   });
 
@@ -391,10 +394,21 @@
      sviluppo. Se non lo e', le ultime fasi si accavallano e la firma sparisce
      mentre il pannello se ne sta gia' andando: meglio dirlo qui che lasciarlo
      scoprire scrollando. */
+  var SVIL = F_SVILUPPO;
+
   function controllaSpazio(){
     var b = binario(), vh = window.innerHeight;
     if(ipApertura === null || b <= 0) return;
     var resta = (1 - ipApertura) * b / vh * 100;
+
+    /* Lo sviluppo si prende TUTTO lo spazio che avanza dopo la tabella, mai
+       meno di F_SVILUPPO. Prima era fisso, e quel che avanzava restava
+       bianco fermo: la frase era sparita, la fotografia non era ancora
+       tornata, e per qualche schermata non succedeva niente. Adesso quel
+       tratto lo occupa la fotografia che rientra, e la sezione non ha piu'
+       un pezzo morto — qualunque sia --binario. */
+    SVIL = Math.max(F_SVILUPPO, resta - TOT);
+
     var serve = TOT + F_SVILUPPO;
     if(resta < serve){
       console.warn('[intro] la coreografia vuole ' + serve + 'vh dopo l\'apertura del ' +
@@ -430,7 +444,7 @@
       var s = cl01((t - speso) / q);
       speso += q;
       var e = 1 - Math.pow(1 - s, 1.35);
-      var off = (lens[i] + PAD + VUOTO) - (lens[i] + VUOTO) * e;
+      var off = riposo(lens[i]) * (1 - e);
       strokes[i].style.strokeDashoffset =
         (REVERSE.indexOf(i) >= 0 ? -off : off).toFixed(2);
     }
@@ -455,7 +469,7 @@
        scorrendo: si spegne, e sotto la fotografia rientra dalla stessa luce da
        cui era uscita in entrata. Andata e ritorno per la stessa porta. */
     var resta = (1 - ipOra()) * binario() / window.innerHeight * 100;
-    var sv = dolce(1 - cl01(resta / Math.max(1, F_SVILUPPO)));
+    var sv = dolce(1 - cl01(resta / Math.max(1, SVIL)));
 
     if(stick) stick.style.opacity = (1 - sv).toFixed(3);
     if(fotoPonte){
@@ -485,6 +499,24 @@
      La correzione passa da Lenis, se c'e': lui tiene un suo scroll interno,
      e scrivendo solo su quello del browser i due si sdoppiano — la pagina
      tornerebbe indietro da sola al fotogramma dopo. */
+  /* L'ORDINE DI QUESTE DUE RIGHE E' IL LAMPO BIANCO.
+     Lenis tiene un suo scroll interno e lo riversa su quello del browser al
+     PROPRIO giro, un fotogramma dopo. Chiedendo prima a lui, il browser
+     disegna la fine di questo blocco con la pagina gia' accorciata di
+     quattrocento schermate ma lo scroll ancora a dov'era: per un fotogramma
+     si guarda un punto della pagina che non esiste piu'. E' cortissimo, ma
+     si vede, e sembra un ricaricamento.
+
+     Si scrive prima sullo scroll del browser — che e' sincrono e garantito,
+     quindi il rettangolo disegnato a fine blocco e' gia' quello giusto — e
+     solo dopo si allinea Lenis, perche' al suo giro non ci riporti indietro. */
+  function correggi(meta){
+    window.scrollTo(0, meta);
+    if(window.lenis && window.lenis.scrollTo){
+      window.lenis.scrollTo(meta, { immediate:true, force:true });
+    }
+  }
+
   var sparita = false, riprovaT = null, riprove = 0;
   var osservaPonte = null, osservaTrack = null;
 
@@ -563,11 +595,7 @@
 
     if(delta){
       var meta = (window.scrollY || window.pageYOffset) + delta;
-      if(window.lenis && window.lenis.scrollTo){
-        window.lenis.scrollTo(meta, { immediate:true, force:true });
-      } else {
-        window.scrollTo(0, meta);
-      }
+      correggi(meta);
     }
 
     velaOra();
@@ -587,12 +615,7 @@
       var ora = hs.getBoundingClientRect().top;
       var resto = ora - prima;
       if(Math.abs(resto) < 2) return;
-      var m2 = (window.scrollY || window.pageYOffset) + resto;
-      if(window.lenis && window.lenis.scrollTo){
-        window.lenis.scrollTo(m2, { immediate:true, force:true });
-      } else {
-        window.scrollTo(0, m2);
-      }
+      correggi((window.scrollY || window.pageYOffset) + resto);
     });
   }
 
@@ -802,6 +825,7 @@
         sc:         Math.round(sc),
         fase:       f,
         serve:      TOT + F_SVILUPPO,
+        sviluppo:   Math.round(SVIL),
         /* quanto scroll passa fra la fine della tabella e l'inizio dello
            sviluppo: e' il tratto bianco in cui non succede niente */
         vuoto:      ipApertura === null ? null :
