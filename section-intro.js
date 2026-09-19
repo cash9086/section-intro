@@ -82,6 +82,7 @@
      non altrove, perche' e' l'unico tratto in cui sotto c'e' gia' accesa la
      fotografia del ponte — prima non c'e' niente da scoprire. */
   var F_SVILUPPO = 40;  /* il pannello se ne va e la foto rientra dalla luce  */
+  var F_SVIL_MAX = 90;  /* e non piu' di cosi', per lunga che sia la sezione  */
   var USCITA_LUCE = 5;  /* la luce da cui rientra: la stessa dell'entrata     */
 
   /* ——— si vede una volta sola ——————————————————————————————————————
@@ -413,8 +414,14 @@
        bianco fermo: la frase era sparita, la fotografia non era ancora
        tornata, e per qualche schermata non succedeva niente. Adesso quel
        tratto lo occupa la fotografia che rientra, e la sezione non ha piu'
-       un pezzo morto — qualunque sia --binario. */
-    SVIL = Math.max(F_SVILUPPO, resta - TOT);
+       un pezzo morto.
+
+       Ma con un tetto. Senza, una sezione generosa dava una dissolvenza di
+       DUE schermate intere: il bianco che si alza cosi' piano da sembrare
+       fermo, e quando finalmente lo noti la fotografia sotto si e' gia'
+       mossa parecchio. Misurato in pagina: sviluppo 200. Oltre F_SVIL_MAX
+       non e' piu' una dissolvenza, e' un'attesa. */
+    SVIL = Math.min(Math.max(F_SVILUPPO, resta - TOT), F_SVIL_MAX);
 
     var serve = TOT + F_SVILUPPO;
     if(resta < serve){
