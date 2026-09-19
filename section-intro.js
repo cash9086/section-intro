@@ -166,11 +166,26 @@
     });
   }
 
+  /* Il tratto si nasconde mettendolo tutto dentro il VUOTO del tratteggio.
+     A riposo l'offset era esattamente lungo quanto il tratteggio, cioe'
+     esattamente sul confine fra pieno e vuoto — e piu' sotto veniva
+     riscritto con due decimali, che a volte arrotondano in giu' e fanno
+     cadere il confine un millesimo DENTRO il pieno.
+
+     Un millesimo di tratto non si vedrebbe, se non fosse che questi tratti
+     hanno la punta tonda: il browser disegna la punta comunque, e un
+     millesimo di tratto diventa un pallino largo quanto il pennello. Sono
+     i puntini che si vedevano prima che la firma cominciasse a scriversi.
+
+     Si sta due unita' dentro il vuoto, e nessun arrotondamento arriva
+     piu' a toccare il pieno. */
+  var VUOTO = 2;
+
   var lens = strokes.map(function(p, i){
     var L = 0;
     try{ L = p.getTotalLength(); }catch(e){}
     p.style.strokeDasharray  = L + PAD;
-    p.style.strokeDashoffset = (L + PAD) * (REVERSE.indexOf(i) >= 0 ? -1 : 1);
+    p.style.strokeDashoffset = (L + PAD + VUOTO) * (REVERSE.indexOf(i) >= 0 ? -1 : 1);
     return L;
   });
 
@@ -415,7 +430,7 @@
       var s = cl01((t - speso) / q);
       speso += q;
       var e = 1 - Math.pow(1 - s, 1.35);
-      var off = (lens[i] + PAD) - lens[i] * e;
+      var off = (lens[i] + PAD + VUOTO) - (lens[i] + VUOTO) * e;
       strokes[i].style.strokeDashoffset =
         (REVERSE.indexOf(i) >= 0 ? -off : off).toFixed(2);
     }
@@ -563,6 +578,12 @@
        fotogramma dopo si guarda dov'e' finito davvero e si rimette a posto la
        differenza. Costa un rettangolo, una volta nella vita della pagina. */
     requestAnimationFrame(function(){
+      /* E si ridecide la velatura anche qui. Il ponte ricalcola la sua
+         fotografia nel fotogramma dopo la sparizione: aspettare il
+         prossimo evento di scroll per accorgersene vuol dire lasciare un
+         buco proprio dove il lampo si vedeva. */
+      velaOra();
+
       var ora = hs.getBoundingClientRect().top;
       var resto = ora - prima;
       if(Math.abs(resto) < 2) return;
@@ -626,7 +647,15 @@
       var accesa = !!(fotoPonte && fotoPonte.classList.contains('is-on'));
       var copre  = false;
 
-      if(accesa && !vola && ponte){
+      /* E dentro l'orizzontale non si vela piu'. Li' il rig copre tutto da
+         solo, e velare e' proprio quello che fa il danno: il ponte spegne
+         la sua fotografia per conto suo, nello stesso istante in cui la
+         sezione sparisce, e se l'hero resta nascosto fino al prossimo
+         evento di scroll in mezzo non c'e' acceso nessuno dei due. E'
+         quello il lampo bianco, corto ma che si vede. */
+      var dentroRig = !!(hs && hs.getBoundingClientRect().top <= 0);
+
+      if(accesa && !vola && ponte && !dentroRig){
         var m = VELO_MARGINE / 100 * window.innerHeight;
         var r = ponte.getBoundingClientRect();
         copre = r.top <= -m && r.bottom > m;
@@ -772,7 +801,11 @@
         ipApertura: ipApertura === null ? null : +ipApertura.toFixed(3),
         sc:         Math.round(sc),
         fase:       f,
-        serve:      TOT + F_SVILUPPO
+        serve:      TOT + F_SVILUPPO,
+        /* quanto scroll passa fra la fine della tabella e l'inizio dello
+           sviluppo: e' il tratto bianco in cui non succede niente */
+        vuoto:      ipApertura === null ? null :
+                    Math.round((1 - ipApertura) * b / vh * 100 - TOT - F_SVILUPPO)
       },
       sparita: sparita
     };
