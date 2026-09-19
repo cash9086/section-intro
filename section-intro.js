@@ -71,7 +71,7 @@
      Sposta un numero e tutto quello che viene dopo slitta insieme. */
   var F_INK      = 90;  /* l'inchiostro riempie la frase                     */
   var F_ATTESA   = 12;  /* la frase finita si guarda un momento              */
-  var F_FIRMA    = 26;  /* la penna scrive                                   */
+  var F_FIRMA    = 50;  /* la penna scrive                                   */
   var F_PAUSA    = 25;  /* si guarda il tutto                                */
   var F_TESTO    = 25;  /* la frase svanisce                                 */
   var F_SOLA     = 15;  /* la firma resta sola                               */
