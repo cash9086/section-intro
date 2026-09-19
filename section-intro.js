@@ -125,6 +125,13 @@
      quante schermate dentro il rig si smette di aspettare. */
   var QUIETE = 200;
   var SICURO = 150;
+
+  /* Quanti millesimi tenere fermo lo scroll attraverso la sparizione, quando
+     non lo sta gia' tenendo fermo il muro d'ingresso del rig. La pagina si
+     accorcia di quattrocento schermate in un colpo: nessuno deve star
+     animando lo scroll mentre succede. Se un lampo si vedesse ancora, e'
+     questo il numero da alzare — 250, 400. Si sente come una virgola. */
+  var TIENI = 140;
   var BRUCIATURA = true;  /* false: il pannello arriva e basta, senza
                              bruciatura. E' la via di fuga se non convince. */
 
@@ -517,35 +524,28 @@
     }
   }
 
-  var sparita = false, riprovaT = null, riprove = 0;
+  var sparita = false;
   var osservaPonte = null, osservaTrack = null;
 
   function svanisci(){
     if(sparita || !hs || !track.offsetHeight) return;
 
-    /* Il muro d'ingresso del rig ferma Lenis per qualche decimo di secondo
-       proprio in questo punto. Scrivere sullo scroll adesso vorrebbe dire
-       contendersi il volante con lui: si aspetta che molli.
-
-       Ma non si esce zitti. Il muro tiene fermo 380ms e la nostra attesa ne
-       dura 200: quando la sveglia suona il volante e' ancora bloccato quasi
-       sempre, e uscendo senza rimetterla la sezione restava in piedi fino al
-       prossimo colpo di rotella. E' per questo che la sparizione capitava a
-       volte subito e a volte dopo, con lo stesso identico gesto.
-
-       Si ritorna, ricontrollando di essere ancora al punto giusto: chi nel
-       frattempo e' risalito non deve trovarsela sparita sotto gli occhi. */
-    if(window.lenis && window.lenis.isStopped){
-      clearTimeout(riprovaT);
-      if(riprove++ < 25){
-        riprovaT = setTimeout(function(){
-          if(hs.getBoundingClientRect().top <= -SPARISCI_A / 100 * window.innerHeight) svanisci();
-        }, QUIETE);
-      }
-      return;
-    }
-
     sparita = true;
+
+    /* IL MOMENTO GIUSTO E' MENTRE IL MURO TIENE.
+
+       Prima si aspettava che il muro d'ingresso del rig mollasse, per non
+       contendersi lo scroll con lui. E' il contrario: quando il muro tiene,
+       lo scroll e' fermo, nessuno lo sta animando, e si e' esattamente sul
+       bordo del rig. Meglio di cosi' non capita.
+
+       Se il muro NON sta tenendo, ce lo si tiene da soli per un istante: la
+       pagina sta per accorciarsi di quattrocento schermate, e nessuno deve
+       star muovendo lo scroll mentre succede. Quanto a lungo lo dice TIENI. */
+    var teniamoNoi = false;
+    if(window.lenis && window.lenis.stop && !window.lenis.isStopped){
+      try{ window.lenis.stop(); teniamoNoi = true; }catch(e){}
+    }
 
     /* Quello che questa sezione aveva scritto ALTROVE va restituito, o resta
        appeso per sempre: l'hero tenuto fermo a meta' schermo, la sua
@@ -600,17 +600,25 @@
 
     velaOra();
 
-    /* E si ricontrolla. Se fra la misura e la correzione qualcun altro ha
-       messo mano allo scroll — il muro del rig e' proprio li' — il rig non e'
-       tornato dov'era, e si sente come un salto in avanti di due sezioni. Un
-       fotogramma dopo si guarda dov'e' finito davvero e si rimette a posto la
-       differenza. Costa un rettangolo, una volta nella vita della pagina. */
     requestAnimationFrame(function(){
-      /* E si ridecide la velatura anche qui. Il ponte ricalcola la sua
-         fotografia nel fotogramma dopo la sparizione: aspettare il
-         prossimo evento di scroll per accorgersene vuol dire lasciare un
-         buco proprio dove il lampo si vedeva. */
+      /* Si ridecide la velatura: il ponte ricalcola la sua fotografia nel
+         fotogramma dopo la sparizione, e aspettare il prossimo evento di
+         scroll per accorgersene lascia un buco proprio dove il lampo si
+         vedeva. */
       velaOra();
+
+      if(teniamoNoi && window.lenis && window.lenis.start){
+        setTimeout(function(){ try{ window.lenis.start(); }catch(e){} }, TIENI);
+      }
+
+      /* E si ricontrolla — ma SOLO il nostro errore, che vale pochi pixel di
+         arrotondamento.
+
+         Finche' il muro tiene, dove sta lo scroll lo decide lui, e non e' un
+         errore da correggere: e' il rig messo esattamente al suo bordo. La
+         correzione che c'era qui lo rimetteva indietro di quei pixel, ed e'
+         quello che si vedeva — buttato a 0% del rig e subito riportato su. */
+      if(window.lenis && window.lenis.isStopped) return;
 
       var ora = hs.getBoundingClientRect().top;
       var resto = ora - prima;
@@ -773,7 +781,6 @@
     window.capeIntroStop = function(){
       removeEventListener('scroll', suScroll);
       visible = false;
-      clearTimeout(riprovaT);
 
       /* Senza staccare anche gli osservatori il ciclo ripartiva da solo al
          primo passaggio della sezione: chi cercava la causa di un
