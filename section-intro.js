@@ -214,8 +214,55 @@
   function dolce(t){ return t * t * (3 - 2 * t); }
   function cl01(v){ return v < 0 ? 0 : (v > 1 ? 1 : v); }
 
-  var RISERVA = MAX_HOLD * window.innerHeight;
-  track.style.height = (track.offsetHeight + RISERVA) + 'px';
+  /* L'altezza della sezione e' --binario piu' la riserva della tenuta. Si
+     scrive in pixel perche' la riserva e' in schermate e --binario no, ma
+     scrivendola una volta sola si perdeva il legame con la finestra: da li'
+     in poi --binario era carta straccia e la sezione restava della misura
+     del primo istante. Ruotare il telefono o ridimensionare la finestra
+     lasciava questa sezione ferma mentre tutte le altre si adattavano.
+
+     Si azzera prima di misurare: cosi' si rilegge --binario dal CSS invece
+     dell'altezza che avevamo gia' scritto noi, che sommata di nuovo alla
+     riserva farebbe crescere la sezione a ogni giro. */
+  var RISERVA = 0;
+
+  function misuraBinario(){
+    track.style.height = '';
+    var base = track.offsetHeight;
+    RISERVA = MAX_HOLD * window.innerHeight;
+    track.style.height = (base + RISERVA) + 'px';
+  }
+
+  misuraBinario();
+
+  /* Sul telefono la barra dell'indirizzo si ritira mentre scrolli e l'altezza
+     della finestra cambia di un centinaio di pixel: per il browser e' un
+     ridimensionamento, per chi guarda no. Rimisurare li' vorrebbe dire
+     spostare il binario sotto le dita, a meta' della coreografia. Quindi si
+     guarda la LARGHEZZA — che quando ruoti cambia sempre e quando la barra si
+     ritira mai — e si accetta un salto d'altezza solo se e' piu' grande di
+     quanto la barra possa fare da sola.
+
+     Ma questa indulgenza serve SOLO dove c'e' una barra che si ritira. Al
+     mouse non esiste, e li' trascinare il bordo basso della finestra di
+     cento pixel e' un ridimensionamento vero, da seguire subito. */
+  var tocco = false;
+  try{ tocco = matchMedia('(hover: none)').matches; }catch(e){}
+
+  var vwUlt = window.innerWidth, vhUlt = window.innerHeight, ridT = null;
+
+  addEventListener('resize', function(){
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var fermo = tocco ? Math.abs(vh - vhUlt) < 140 : vh === vhUlt;
+    if(vw === vwUlt && fermo) return;
+    vwUlt = vw; vhUlt = vh;
+    clearTimeout(ridT);
+    ridT = setTimeout(function(){
+      if(sparita || !track.offsetHeight) return;
+      misuraBinario();
+      controllaSpazio();
+    }, 150);
+  }, { passive:true });
 
   function trattieni(){
     if(!stick) return;
@@ -423,16 +470,33 @@
      La correzione passa da Lenis, se c'e': lui tiene un suo scroll interno,
      e scrivendo solo su quello del browser i due si sdoppiano — la pagina
      tornerebbe indietro da sola al fotogramma dopo. */
-  var sparita = false;
+  var sparita = false, riprovaT = null, riprove = 0;
+  var osservaPonte = null, osservaTrack = null;
 
   function svanisci(){
     if(sparita || !hs || !track.offsetHeight) return;
 
     /* Il muro d'ingresso del rig ferma Lenis per qualche decimo di secondo
        proprio in questo punto. Scrivere sullo scroll adesso vorrebbe dire
-       contendersi il volante con lui: si aspetta che molli, e il prossimo
-       colpo di rotella ci riporta qui. */
-    if(window.lenis && window.lenis.isStopped) return;
+       contendersi il volante con lui: si aspetta che molli.
+
+       Ma non si esce zitti. Il muro tiene fermo 380ms e la nostra attesa ne
+       dura 200: quando la sveglia suona il volante e' ancora bloccato quasi
+       sempre, e uscendo senza rimetterla la sezione restava in piedi fino al
+       prossimo colpo di rotella. E' per questo che la sparizione capitava a
+       volte subito e a volte dopo, con lo stesso identico gesto.
+
+       Si ritorna, ricontrollando di essere ancora al punto giusto: chi nel
+       frattempo e' risalito non deve trovarsela sparita sotto gli occhi. */
+    if(window.lenis && window.lenis.isStopped){
+      clearTimeout(riprovaT);
+      if(riprove++ < 25){
+        riprovaT = setTimeout(function(){
+          if(hs.getBoundingClientRect().top <= -SPARISCI_A / 100 * window.innerHeight) svanisci();
+        }, QUIETE);
+      }
+      return;
+    }
 
     sparita = true;
 
@@ -605,12 +669,13 @@
     var ponteVicino = true;
 
     if(window.IntersectionObserver && ponte){
-      new IntersectionObserver(function(es){
+      osservaPonte = new IntersectionObserver(function(es){
         ponteVicino = es[0].isIntersecting;
         /* uscendo dal raggio si fa un ultimo giro, o l'hero resterebbe
            spento con la fotografia del ponte gia' sparita */
         if(!ponteVicino && sparita) velaOra();
-      }, { rootMargin:'100% 0px' }).observe(ponte);
+      }, { rootMargin:'100% 0px' });
+      osservaPonte.observe(ponte);
     }
 
     /* Il momento in cui la sezione sparisce e' anche quello in cui il muro
@@ -656,9 +721,25 @@
     window.capeIntroStop = function(){
       removeEventListener('scroll', suScroll);
       visible = false;
-      if(hero)      hero.style.visibility = '';
-      if(fotoPonte) fotoPonte.style.visibility = '';
-      return 'section-intro staccato: ciclo fermo, listener rimossi, velature tolte.';
+      clearTimeout(riprovaT);
+
+      /* Senza staccare anche gli osservatori il ciclo ripartiva da solo al
+         primo passaggio della sezione: chi cercava la causa di un
+         rallentamento credeva di aver escluso questo file mentre girava
+         ancora. Un interruttore che non spegne e' peggio di nessun
+         interruttore, perche' da una risposta e la risposta e' sbagliata. */
+      if(osservaTrack) osservaTrack.disconnect();
+      if(osservaPonte) osservaPonte.disconnect();
+
+      /* E si restituisce tutto quello che questo file ha scritto altrove:
+         l'hero tenuto fermo e velato, le due fotografie bruciate, il
+         pannello. Altrimenti resta la scena a meta' di quando l'hai fermato. */
+      if(hero){     hero.style.visibility = '';     hero.style.transform = ''; }
+      if(fotoPonte){ fotoPonte.style.visibility = ''; fotoPonte.style.filter = ''; }
+      if(fondale)   fondale.style.filter = '';
+      if(stick){    stick.style.opacity = '';       stick.style.pointerEvents = ''; }
+
+      return 'section-intro staccato: ciclo fermo, osservatori scollegati, elementi restituiti. Ricarica la pagina per riaverlo.';
     };
   }
 
@@ -710,8 +791,9 @@
     requestAnimationFrame(frame);
   }
 
-  new IntersectionObserver(function(es){
+  osservaTrack = new IntersectionObserver(function(es){
     visible = es[0].isIntersecting;
     if(visible && !running){ running = true; requestAnimationFrame(frame); }
-  }, { rootMargin:'20% 0px' }).observe(track);
+  }, { rootMargin:'20% 0px' });
+  osservaTrack.observe(track);
 })();
