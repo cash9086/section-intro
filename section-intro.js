@@ -88,14 +88,17 @@
   /* ——— si vede una volta sola ——————————————————————————————————————
      Arrivati dentro l'orizzontale, questa sezione se ne va dal documento:
      risalendo si passa dal ponte direttamente all'hero, e riscendendo non
-     c'e' piu'. Torna solo con un refresh — e' uno stato in memoria, non un
-     cookie: la pagina ricaricata e' una pagina nuova.
+     c'e' piu'.
 
-     Quante schermate dentro l'orizzontale aspettare: zero, cioe' appena il
-     rig tocca il bordo alto. Il muro d'ingresso del rig ferma lo scroll
-     proprio li' per qualche decimo di secondo, e scrivere sullo scroll
-     mentre lui lo tiene fermo li fa litigare — per questo sotto si aspetta
-     che abbia mollato la presa, invece di tenersi un margine a caso. */
+     E non torna nemmeno ricaricando, se non si era in cima: la scheda si
+     ricorda di averla gia' fatta vedere. Vedi MEMORIA piu' sotto. Torna solo
+     ricaricando dalla cima della pagina, o aprendo l'indirizzo in una scheda
+     nuova.
+
+     Quante schermate dentro l'orizzontale aspettare: zero. Non "quasi zero":
+     appena il bordo alto del rig tocca lo zero si sparisce, nello stesso
+     fotogramma. E' anche l'istante in cui il muro d'ingresso del rig tiene
+     fermo lo scroll, ed e' esattamente li' che serve — vedi svanisci(). */
   var SPARISCI_A = 0;
 
   /* Sparita la sezione, il ponte va ritarato. Due numeri, legati fra loro.
@@ -122,10 +125,18 @@
      dei due acceso — vedi velaOra(). */
   var VELO_MARGINE = 15;
 
-  /* Quanto lo scroll deve stare fermo prima di far sparire la sezione, e da
-     quante schermate dentro il rig si smette di aspettare. */
-  var QUIETE = 200;
-  var SICURO = 150;
+  /* La memoria fra un ricaricamento e l'altro.
+
+     Se in questa scheda la sezione era gia' sparita e non si era in cima, al
+     ricaricamento non deve ricomparire: si e' gia' vista. La memoria dura
+     quanto la scheda — un indirizzo riaperto in una scheda nuova rivede la
+     intro dall'inizio, ed e' giusto cosi'.
+
+     Si salva anche a che altezza si era, ed e' quello che distingue "ero piu'
+     giu', la intro l'avevo passata" da "ero tornato in cima". Sotto SOGLIA
+     pixel si conta come in cima e la intro riparte. */
+  var MEMORIA = 'cape-intro';
+  var SOGLIA  = 50;
 
   /* Quanti millesimi tenere fermo lo scroll attraverso la sparizione, quando
      non lo sta gia' tenendo fermo il muro d'ingresso del rig. La pagina si
@@ -538,40 +549,18 @@
   var arbitro = window.capeScroll || null;
   var osservaPonte = null, osservaTrack = null;
 
-  function svanisci(){
-    if(sparita || !hs || !track.offsetHeight) return;
-
-    sparita = true;
-
-    /* IL MOMENTO GIUSTO E' MENTRE IL MURO TIENE.
-
-       Prima si aspettava che il muro d'ingresso del rig mollasse, per non
-       contendersi lo scroll con lui. E' il contrario: quando il muro tiene,
-       lo scroll e' fermo, nessuno lo sta animando, e si e' esattamente sul
-       bordo del rig. Meglio di cosi' non capita.
-
-       Se il muro NON sta tenendo, ce lo si tiene da soli per un istante: la
-       pagina sta per accorciarsi di quattrocento schermate, e nessuno deve
-       star muovendo lo scroll mentre succede. Quanto a lungo lo dice TIENI.
-
-       Il volante si chiede all'arbitro con la precedenza piu' alta: questa
-       non e' una planata a cui si puo' rinunciare, e' una correzione che DEVE
-       passare — anche se in quell'istante il muro del rig sta tenendo. */
-    if(arbitro){
-      arbitro.prendi(VOLANTE, arbitro.CORREZIONE);
-      arbitro.ferma(VOLANTE);
-    } else if(window.lenis && window.lenis.stop && !window.lenis.isStopped){
-      try{ window.lenis.stop(); teniamoNoi = true; }catch(e){}
-    }
-
+  /* La sparizione vera e propria: solo geometria, nessuno scroll da spostare
+     e nessun volante da chiedere. La usano tutte e due le strade — quella a
+     scroll, che intorno ci mette la presa del volante e la correzione, e
+     quella al caricamento, che non ha niente da correggere perche' lo scroll
+     ripristinato e' gia' quello di una pagina senza la intro. */
+  function collassa(){
     /* Quello che questa sezione aveva scritto ALTROVE va restituito, o resta
        appeso per sempre: l'hero tenuto fermo a meta' schermo, la sua
        fotografia bruciata, quella del ponte pure. */
     if(hero){ hero.style.transform = ''; hero.style.visibility = ''; }
     if(fondale)   fondale.style.filter = '';
     if(fotoPonte) fotoPonte.style.filter = '';
-
-    var prima = hs.getBoundingClientRect().top;
 
     /* Si COLLASSA, non si nasconde.
 
@@ -601,12 +590,46 @@
        Alzandolo sopra l'hero la sua fotografia raccoglie il testimone dove
        l'altra lo lascia, senza bianco in mezzo e senza doppioni. E anche
        l'altezza va ritarata: quella di partenza, 260 schermate, ne lasciava
-       160 di fotografia ferma. */
+       160 di fotografia ferma.
+
+       ATTENZIONE: da qui in poi l'altezza del ponte NON e' piu' quella della
+       head. Quella vale solo la prima volta, con la intro ancora in pagina.
+       Dopo la sparizione comandano PONTE_SOVRAP e PONTE_FERMO, qui sopra. */
     if(ponte){
       ponte.style.marginTop = (-PONTE_SOVRAP) + 'vh';
       ponte.style.height    = (PONTE_FERMO + 100) + 'vh';
     }
+  }
 
+  function svanisci(){
+    if(sparita || !hs || !track.offsetHeight) return;
+
+    sparita = true;
+
+    /* IL MOMENTO GIUSTO E' MENTRE IL MURO TIENE.
+
+       Prima si aspettava che il muro d'ingresso del rig mollasse, per non
+       contendersi lo scroll con lui. E' il contrario: quando il muro tiene,
+       lo scroll e' fermo, nessuno lo sta animando, e si e' esattamente sul
+       bordo del rig. Meglio di cosi' non capita.
+
+       Se il muro NON sta tenendo, ce lo si tiene da soli per un istante: la
+       pagina sta per accorciarsi di quattrocento schermate, e nessuno deve
+       star muovendo lo scroll mentre succede. Quanto a lungo lo dice TIENI.
+
+       Il volante si chiede all'arbitro con la precedenza piu' alta: questa
+       non e' una planata a cui si puo' rinunciare, e' una correzione che DEVE
+       passare — anche se in quell'istante il muro del rig sta tenendo. */
+    if(arbitro){
+      arbitro.prendi(VOLANTE, arbitro.CORREZIONE);
+      arbitro.ferma(VOLANTE);
+    } else if(window.lenis && window.lenis.stop && !window.lenis.isStopped){
+      try{ window.lenis.stop(); teniamoNoi = true; }catch(e){}
+    }
+
+    var prima = hs.getBoundingClientRect().top;
+    collassa();
+    ricorda();
     var dopo  = hs.getBoundingClientRect().top;
     var delta = dopo - prima;
 
@@ -736,6 +759,65 @@
     requestAnimationFrame(velaOra);
   }
 
+  /* ── la memoria fra un ricaricamento e l'altro ───────────────────────── */
+
+  function ricorda(){
+    try{
+      sessionStorage.setItem(MEMORIA, (sparita ? '1' : '0') + ':' +
+        Math.round(window.scrollY || window.pageYOffset || 0));
+    }catch(e){}
+  }
+
+  /* Cosa diceva la memoria: [gia' sparita, a che altezza si era]. */
+  function ricordo(){
+    try{
+      var v = sessionStorage.getItem(MEMORIA);
+      if(!v) return null;
+      var d = v.split(':');
+      return { sparita: d[0] === '1', y: parseFloat(d[1]) || 0 };
+    }catch(e){ return null; }
+  }
+
+  addEventListener('pagehide', ricorda);
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) ricorda();
+  });
+
+  /* La sparizione al caricamento.
+
+     DEVE succedere adesso, non fra un istante: questo file gira con `defer`,
+     cioe' a pagina montata ma PRIMA che il browser rimetta lo scroll dove
+     stava. Se la sezione sparisce adesso, la pagina e' gia' alta come quella
+     da cui si veniva, e lo scroll ripristinato cade nel punto giusto da solo.
+     Farlo dopo vorrebbe dire accorciare la pagina sotto i piedi di uno scroll
+     gia' ripristinato, e ritrovarsi quattrocento schermate piu' avanti.
+
+     Per lo stesso motivo qui NON si corregge lo scroll: non c'e' niente da
+     correggere. La correzione dentro svanisci() serve quando la pagina si
+     accorcia mentre stai guardando; qui la pagina nasce gia' corta.
+
+     Lo scroll lo rimettiamo anche noi, per le volte in cui il browser non lo
+     ripristina (certe aperture da cronologia, certi telefoni): puntiamo allo
+     stesso numero, quindi se lo fa anche lui non si litiga. Non lo tocchiamo
+     se c'e' un'ancora nell'indirizzo — li' comanda l'ancora. */
+  function saltaLaIntro(){
+    if(sparita || !track.offsetHeight) return false;
+    sparita = true;
+    collassa();
+    velaOra();
+    return true;
+  }
+
+  /* Per il preloader, quando ci sara': una riga e la intro e' gia' passata. */
+  window.capeIntroSalta = saltaLaIntro;
+
+  (function(){
+    var r = ricordo();
+    if(!r || !r.sparita || r.y <= SOGLIA) return;
+    if(!saltaLaIntro()) return;
+    if(!location.hash) window.scrollTo(0, r.y);
+  })();
+
   /* Il controllo costa un rettangolo per scrollata, e quello della sparizione
      smette del tutto dopo la prima volta. Non usa il ciclo della sezione
      apposta: quello si spegne quando la sezione esce dallo schermo, cioe'
@@ -763,17 +845,24 @@
       osservaPonte.observe(ponte);
     }
 
-    /* Il momento in cui la sezione sparisce e' anche quello in cui il muro
-       d'ingresso del rig ferma Lenis e lo rimette in riga. Due codici che
-       scrivono sullo scroll nello stesso istante si catapultano a vicenda.
+    /* Appena il rig tocca il bordo alto, si sparisce. Subito, nello stesso
+       fotogramma.
 
-       Quindi non si sparisce appena la condizione e' vera: si aspetta che lo
-       scroll si POSI — QUIETE ms senza un evento — che e' il modo piu'
-       semplice per sapere che nessun altro sta guidando. Chi scrolla senza
-       mai fermarsi non aspetterebbe mai, e per quello c'e' la seconda porta:
-       SICURO schermate dentro il rig il muro e' comunque speso da un pezzo. */
-    var quieteT = null;
+       Qui prima si aspettava: duecento millesimi di scroll fermo, perche' la
+       sparizione e il muro d'ingresso del rig scrivono sullo scroll nello
+       stesso istante e si catapultavano a vicenda. Quella paura non c'e'
+       piu' — svanisci() qui sotto lo dice da se': il momento giusto e'
+       PROPRIO mentre il muro tiene, perche' li' lo scroll e' fermo e si e'
+       esattamente sul bordo del rig. L'attesa era rimasta indietro rispetto
+       al resto, ed era lei a far sparire la sezione tardi.
 
+       Quanto tardi: Lenis continua a mandare eventi per tutta la sua
+       frenata, quindi duecento millesimi di silenzio arrivano solo quando ti
+       fermi davvero. E la porta di sicurezza — SICURO, centocinquanta
+       schermate dentro il rig — non si apriva MAI: il rig e' alto 220vh (uno
+       schermo di pannello incollato piu' 120 di corsa), quindi il suo bordo
+       alto arriva al massimo a -120vh. Restava una sola strada, e passava
+       da quando ti fermavi: spesso in fondo all'orizzontale. */
     function guarda(){
       guardaAtteso = false;
       if(sparita){ velaOra(); return; }
@@ -782,10 +871,7 @@
       var top = hs.getBoundingClientRect().top;
       if(top > -SPARISCI_A / 100 * vh) return;
 
-      if(top <= -SICURO / 100 * vh){ svanisci(); return; }
-
-      clearTimeout(quieteT);
-      quieteT = setTimeout(svanisci, QUIETE);
+      svanisci();
     }
 
     /* Un giro per fotogramma anche qui. Gli eventi di scroll arrivano piu'
