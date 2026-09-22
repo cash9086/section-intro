@@ -451,6 +451,36 @@
        non e' piu' una dissolvenza, e' un'attesa. */
     SVIL = Math.min(Math.max(F_SVILUPPO, resta - TOT), F_SVIL_MAX);
 
+    /* E MAI PIU' LUNGA DELLA FINESTRA IN CUI SOTTO C'E' DAVVERO QUALCOSA.
+
+       La fotografia del ponte si accende quando il ponte entra dall'alto, e
+       si accende con `visibility`, che non si sfuma: o c'e' o non c'e'. Se la
+       dissolvenza comincia prima di quel momento, il pannello svanisce sopra
+       il nulla e la fotografia compare di scatto a meta' strada — ed e'
+       esattamente lo scatto che si vedeva.
+
+       La finestra si misura, non si scrive a mano: dipende da quanto il
+       ponte scavalca la intro (il suo margine negativo) e da quanto e' alta
+       la sezione. Cambiane uno e questo conto si adegua da solo. */
+    if(ponte && ponte.offsetHeight){
+      var y  = window.scrollY || window.pageYOffset;
+      var tb = track.getBoundingClientRect().bottom + y;
+      var pt = ponte.getBoundingClientRect().top + y;
+      var finestra = (tb - vh - pt) / vh * 100;
+      if(finestra > 10) SVIL = Math.min(SVIL, finestra);
+    }
+
+    /* Quello che avanza fra la fine della tabella e l'inizio della
+       dissolvenza e' bianco fermo: non succede niente per qualche schermata.
+       Non si puo' allungare la dissolvenza per coprirlo — la finestra qui
+       sopra non lo permette — quindi l'unica cura e' accorciare la sezione. */
+    var morto = Math.round(resta - TOT - SVIL);
+    if(morto > 12){
+      console.warn('[intro] fra la fine della tabella e l\'inizio della ' +
+        'dissolvenza restano ' + morto + 'vh di bianco fermo. Abbassa ' +
+        '--binario su .section-intro di ' + morto + 'vh.');
+    }
+
     var serve = TOT + F_SVILUPPO;
     if(resta < serve){
       console.warn('[intro] la coreografia vuole ' + serve + 'vh dopo l\'apertura del ' +
