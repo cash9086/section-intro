@@ -54,6 +54,14 @@
   var SOSTA     = 0.80;
   var MAX_HOLD  = 0.80;
 
+  /* Il muro del bianco. trattieni() tiene il pannello fermo agli OCCHI, non
+     alle mani: la pagina scorre lo stesso, e chi scende lanciato attraversa
+     la sosta in un fotogramma senza accorgersene. Qui lo scroll si ferma
+     davvero, nell'istante in cui il bianco copre tutto lo schermo.
+     MURO_MS a 0 spegne il muro e resta solo la sosta di prima. */
+  var MURO_MS     = 380;
+  var MURO_GRAZIA = 220;
+
   /* Le parole nascono dal NULLA, non da un contorno grigio: a zero non c'e'
      niente sul bianco finche' l'inchiostro non le raggiunge. */
   var PALE      = 0;
@@ -359,10 +367,18 @@
       }
 
       var aperta = (ap >= 0.999);
+      if(!aperta) muroVisto = true;
       /* Lo zero di tutta la coreografia: il pannello ha finito di arrivare.
          Si segna una volta sola, sul binario grezzo, e da li' si contano le
          schermate della tabella. */
-      if(aperta && ipApertura === null){ ipApertura = ipOra(); controllaSpazio(); }
+      if(aperta && ipApertura === null){
+        ipApertura = ipOra();
+        controllaSpazio();
+        /* Il bianco copre tutto lo schermo: qui si inchioda. yRil + vh e' il
+           punto esatto in cui ap vale 1, non dove il fotogramma ci ha
+           portati: chi arriva lanciato viene rimesso li'. */
+        if(yRil !== null) muroBianco(yRil + vh);
+      }
       if(aperta !== apertaOra){
         apertaOra = aperta;
         contenuti.forEach(function(el){
@@ -548,6 +564,53 @@
   var sparita = false, teniamoNoi = false;
   var arbitro = window.capeScroll || null;
   var osservaPonte = null, osservaTrack = null;
+
+  /* Il muro del bianco: stessa meccanica del muro d'ingresso del rig, cosi'
+     i due si sentono uguali. Si spende una volta sola, e solo dopo aver
+     visto almeno un fotogramma col pannello non ancora arrivato: se no,
+     ricaricando la pagina a meta' intro, si verrebbe murati all'istante. */
+  var MURO_NOME = 'intro-muro-bianco';
+  var muroVisto = false, muroSpeso = false, muroVol = null, muroT = null;
+
+  function mollaMuro(){
+    clearTimeout(muroT); muroT = null;
+    if(arbitro){
+      if(muroVol) arbitro.molla(muroVol);
+      muroVol = null;
+      return;
+    }
+    if(window.lenis && window.lenis.start) window.lenis.start();
+  }
+
+  function muroBianco(meta){
+    if(muroSpeso || !muroVisto || MURO_MS <= 0) return;
+    if(arbitro && !arbitro.prendi(MURO_NOME, arbitro.MURO)) return;
+    muroSpeso = true;
+
+    if(arbitro){
+      muroVol = MURO_NOME;
+      arbitro.ferma(MURO_NOME);
+      arbitro.vaA(MURO_NOME, meta, { immediate:true });
+    } else if(window.lenis && window.lenis.stop){
+      window.lenis.stop();
+      window.lenis.scrollTo(meta, { immediate:true, force:true });
+    } else {
+      window.scrollTo(0, meta);
+    }
+
+    muroT = setTimeout(mollaMuro, MURO_MS);
+
+    /* uscita di sicurezza: due colpi di rotella e si riparte */
+    var t0 = Date.now(), colpi = 0;
+    function insiste(){
+      if(Date.now() - t0 < MURO_GRAZIA) return;
+      if(++colpi < 2) return;
+      removeEventListener('wheel', insiste);
+      mollaMuro();
+    }
+    addEventListener('wheel', insiste, { passive:true });
+    setTimeout(function(){ removeEventListener('wheel', insiste); }, MURO_MS + 60);
+  }
 
   /* La sparizione vera e propria: solo geometria, nessuno scroll da spostare
      e nessun volante da chiedere. La usano tutte e due le strade — quella a
