@@ -85,14 +85,22 @@
   var F_SVIL_MAX = 90;  /* e non piu' di cosi', per lunga che sia la sezione  */
   var USCITA_LUCE = 5;  /* la luce da cui rientra: la stessa dell'entrata     */
 
-  /* La luce non cala in modo uniforme: cala in fretta all'inizio e poi si
-     posa. A occhio, una fotografia a luce 3 e' bianca quanto una a luce 5:
-     scendendo dritti da 5 a 1 non si vede NIENTE per tre quarti della
-     dissolvenza e poi compare tutto in un colpo — ed e' quello lo scatto.
-     Con la curva, a meta' strada la luce e' gia' 1.5 e la fotografia si
-     legge: la rivelazione si distribuisce invece di accumularsi in fondo.
-     1 = come prima, dritta. Piu' alto = si vede prima.                   */
-  var USCITA_CURVA = 3;
+  /* I DUE BIANCHI SI SOMMANO, ed e' questo il punto.
+
+     Il pannello che svanisce e' bianco; la fotografia sotto, finche' e'
+     bruciata, e' bianca anche lei. Finche' vanno di pari passo non si vede
+     succedere niente — bianco sopra bianco — e la fotografia salta fuori
+     solo quando il pannello e' quasi andato. Sembra uno scatto perche' una
+     dissolvenza c'e', ma e' schiacciata tutta in fondo.
+
+     Quindi la bruciatura si consuma nel PRIMO terzo: a un terzo di strada la
+     luce e' gia' ~1.5, a meta' e' praticamente 1. Da li' in poi resta una
+     sola cosa che cambia — il bianco che se ne va da sopra una fotografia
+     gia' esposta bene — e quella e' una dissolvenza pulita, senza gradini.
+
+     1 = cala dritta, come prima. Piu' alto = la bruciatura si risolve prima
+     e la dissolvenza si distribuisce meglio.                             */
+  var USCITA_CURVA = 6;
 
   /* ——— si vede una volta sola ——————————————————————————————————————
      Arrivati dentro l'orizzontale, questa sezione se ne va dal documento:
