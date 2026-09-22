@@ -56,11 +56,18 @@
 
   /* Il muro del bianco. trattieni() tiene il pannello fermo agli OCCHI, non
      alle mani: la pagina scorre lo stesso, e chi scende lanciato attraversa
-     la sosta in un fotogramma senza accorgersene. Qui lo scroll si ferma
-     davvero, nell'istante in cui il bianco copre tutto lo schermo.
-     MURO_MS a 0 spegne il muro e resta solo la sosta di prima. */
-  var MURO_MS     = 380;
-  var MURO_GRAZIA = 220;
+     la sosta in un fotogramma senza accorgersene.
+
+     Questo e' un muro, non una pausa: quando il bianco copre tutto lo schermo
+     lo scroll si pianta e NON riparte da solo. Riparte quando il gesto in
+     corso finisce — cioe' quando la rotella tace per MURO_QUIETE millesimi —
+     e da li' per proseguire bisogna ricominciare a scrollare. Chi arriva
+     lanciato resta murato per tutta la sua rincorsa, per lunga che sia.
+
+     MURO false lo spegne e resta solo la sosta di prima. */
+  var MURO        = true;
+  var MURO_QUIETE = 180;   /* silenzio della rotella che vale "gesto finito"  */
+  var MURO_MAX    = 4000;  /* rete: piu' di cosi' non si tiene fermo nessuno  */
 
   /* Le parole nascono dal NULLA, non da un contorno grigio: a zero non c'e'
      niente sul bianco finche' l'inchiostro non le raggiunge. */
@@ -565,15 +572,30 @@
   var arbitro = window.capeScroll || null;
   var osservaPonte = null, osservaTrack = null;
 
-  /* Il muro del bianco: stessa meccanica del muro d'ingresso del rig, cosi'
-     i due si sentono uguali. Si spende una volta sola, e solo dopo aver
-     visto almeno un fotogramma col pannello non ancora arrivato: se no,
-     ricaricando la pagina a meta' intro, si verrebbe murati all'istante. */
-  var MURO_NOME = 'intro-muro-bianco';
-  var muroVisto = false, muroSpeso = false, muroVol = null, muroT = null;
+  /* Il muro del bianco.
 
-  function mollaMuro(){
-    clearTimeout(muroT); muroT = null;
+     Non si molla a tempo: si molla quando il GESTO finisce. Finche' la
+     rotella parla, lo scroll resta inchiodato al punto — e ogni fotogramma
+     lo si rimette li', perche' i tasti freccia e chiunque altro scriva sullo
+     scroll passerebbero sotto a Lenis fermo. La presa sull'arbitro si
+     rinnova, se no la sua scadenza di sicurezza la scioglierebbe da sola
+     dopo due secondi e mezzo e il muro cederebbe a meta' rincorsa.
+
+     Si spende una volta sola, e solo dopo aver visto almeno un fotogramma col
+     pannello non ancora arrivato: se no, ricaricando la pagina a meta' intro,
+     si verrebbe murati all'istante. */
+  var MURO_NOME = 'intro-muro-bianco';
+  var muroVisto = false, muroSpeso = false, muroVol = null;
+  var muroVivo = false, muroY = 0, muroRin = 0, muroQ = null, muroCap = null;
+
+  function muroVia(){
+    if(!muroVivo) return;
+    muroVivo = false;
+    clearTimeout(muroQ);   muroQ = null;
+    clearTimeout(muroCap); muroCap = null;
+    removeEventListener('wheel', muroTocca);
+    removeEventListener('touchmove', muroTocca);
+    removeEventListener('keydown', muroTocca);
     if(arbitro){
       if(muroVol) arbitro.molla(muroVol);
       muroVol = null;
@@ -582,8 +604,30 @@
     if(window.lenis && window.lenis.start) window.lenis.start();
   }
 
+  function muroTocca(){
+    if(!muroVivo) return;
+    clearTimeout(muroQ);
+    muroQ = setTimeout(muroVia, MURO_QUIETE);
+  }
+
+  function muroTieni(){
+    if(!muroVivo) return;
+    if(arbitro && Date.now() - muroRin > 800){
+      muroRin = Date.now();
+      if(!arbitro.prendi(MURO_NOME, arbitro.MURO)){ muroVia(); return; }
+    }
+    var y = window.scrollY || window.pageYOffset;
+    if(Math.abs(y - muroY) > 1){
+      window.scrollTo(0, muroY);
+      if(window.lenis && window.lenis.scrollTo){
+        window.lenis.scrollTo(muroY, { immediate:true, force:true });
+      }
+    }
+    requestAnimationFrame(muroTieni);
+  }
+
   function muroBianco(meta){
-    if(muroSpeso || !muroVisto || MURO_MS <= 0) return;
+    if(!MURO || muroSpeso || !muroVisto) return;
     if(arbitro && !arbitro.prendi(MURO_NOME, arbitro.MURO)) return;
     muroSpeso = true;
 
@@ -598,18 +642,15 @@
       window.scrollTo(0, meta);
     }
 
-    muroT = setTimeout(mollaMuro, MURO_MS);
-
-    /* uscita di sicurezza: due colpi di rotella e si riparte */
-    var t0 = Date.now(), colpi = 0;
-    function insiste(){
-      if(Date.now() - t0 < MURO_GRAZIA) return;
-      if(++colpi < 2) return;
-      removeEventListener('wheel', insiste);
-      mollaMuro();
-    }
-    addEventListener('wheel', insiste, { passive:true });
-    setTimeout(function(){ removeEventListener('wheel', insiste); }, MURO_MS + 60);
+    muroY = meta;
+    muroRin = Date.now();
+    muroVivo = true;
+    addEventListener('wheel', muroTocca, { passive:true });
+    addEventListener('touchmove', muroTocca, { passive:true });
+    addEventListener('keydown', muroTocca);
+    muroCap = setTimeout(muroVia, MURO_MAX);
+    muroTocca();
+    requestAnimationFrame(muroTieni);
   }
 
   /* La sparizione vera e propria: solo geometria, nessuno scroll da spostare
