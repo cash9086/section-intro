@@ -85,6 +85,15 @@
   var F_SVIL_MAX = 90;  /* e non piu' di cosi', per lunga che sia la sezione  */
   var USCITA_LUCE = 5;  /* la luce da cui rientra: la stessa dell'entrata     */
 
+  /* La luce non cala in modo uniforme: cala in fretta all'inizio e poi si
+     posa. A occhio, una fotografia a luce 3 e' bianca quanto una a luce 5:
+     scendendo dritti da 5 a 1 non si vede NIENTE per tre quarti della
+     dissolvenza e poi compare tutto in un colpo — ed e' quello lo scatto.
+     Con la curva, a meta' strada la luce e' gia' 1.5 e la fotografia si
+     legge: la rivelazione si distribuisce invece di accumularsi in fondo.
+     1 = come prima, dritta. Piu' alto = si vede prima.                   */
+  var USCITA_CURVA = 3;
+
   /* ——— si vede una volta sola ——————————————————————————————————————
      Arrivati dentro l'orizzontale, questa sezione se ne va dal documento:
      risalendo si passa dal ponte direttamente all'hero, e riscendendo non
@@ -506,7 +515,7 @@
          Avevo scritto * sv invece di * (1 - sv): la fotografia si illuminava
          invece di disilluminarsi, e siccome dopo la fine resta inchiodata a
          sv = 1, restava bruciata per sempre. */
-      var br = 1 + (USCITA_LUCE - 1) * (1 - sv);
+      var br = 1 + (USCITA_LUCE - 1) * Math.pow(1 - sv, USCITA_CURVA);
       fotoPonte.style.filter = br <= 1.002 ? '' : 'brightness(' + br.toFixed(3) + ')';
     }
   }
